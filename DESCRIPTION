@@ -1,0 +1,19 @@
+Package: MSOCclassifier
+Type: Package
+Title: Multi-Omics Data Fusion for High-grade Serous Ovarian Cancer Molecular Subtyping Using Sparse Multiple Canonical Correlation Analysis and Similarity Fusion Network
+Version: 0.1.0
+Author: Lingli He
+Maintainer: Lingli He <linglihe3@gmail.com>
+Description: The MSOCclassifier package implements high-grade serous ovarian Cancer subtyping based on the input of any combination of mRNA expression, microRNA expression, DNA methylation, copy number variation, and mutation data.
+License: GPL-2
+Encoding: UTF-8
+LazyData: true
+Depends: 
+    R (>= 3.5)
+RoxygenNote: 7.3.2
+Imports:
+    caret
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr

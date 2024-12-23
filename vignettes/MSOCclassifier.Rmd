@@ -1,0 +1,133 @@
+---
+title: "MSOCclassifier: an R package for multi-omics subtyping of high-grade serous ovarian cancer"
+output: 
+  BiocStyle::html_document:
+    toc: FALSE
+bibliography: bibliography.bib
+vignette: >
+  %\VignetteIndexEntry{MSOCclassifier}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+date: ""  # 去掉日期
+---
+
+
+<style>
+h1.title {
+  text-align: center;
+}
+</style>
+
+<!-- <div style="text-align: center;"> </div> -->
+Lingli He<sup>1</sup> and Xin Wang<sup>1</sup>
+
+<sup>1</sup> Department of Surgery, The Chinese University of Hong Kong, Hong Kong SAR, China.
+
+* contact: xinwang@cuhk.edu.hk
+* `r paste("date:", Sys.Date())`
+* package: `r BiocStyle::pkg_ver("MSOCclassifier")`
+
+
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+# Introduction
+
+The vignette helps the user to do multi-omics high-grade serous ovarian cancer subtyping using sparse mCCA (@witten2009extensions) and weighted average. Paired mRNA expression, microRNA expression, DNA methylation, copy number variation, and mutation data from TCGA-OV dataset were used for the training of multi-omics high-grade serous ovarian cancer classifier. The package accepts any combination of mRNA expression, microRNA expression, DNA methylation, copy number variation, and mutation data as input. 
+
+
+# Package installation
+
+Please run all analyses in this vignette under version 2.10 of R prior to installation of package MSOCclassifier, R packages caret should be installed. The package can be installed directly from CRAN (Comprehensive R Archive Network):
+```{r message=FALSE, warning=FALSE, results='hide'}
+options(repos = c(CRAN = "https://cloud.r-project.org/"))
+install.packages("caret")
+library(caret)
+library(devtools)
+# install the "MSOCclassifier" package
+install_github("Carpentierbio/MSOCclassifier")
+```
+
+# A quick start 
+
+## Projecting each omics data into a unified space and integrating them
+The example dataset used in this analysis comes from the ICGC-OV cohort on 79 ovarian cancer patients, downloaded from https://dcc.icgc.org/projects/OV-AU (This link may no longer be accessible as of now).
+
+* input data can be any combination of mRNA expression, microRNA expression, DNA methylation, copy number variation, and mutation data.
+* if the single-omics or multi-omics integrated data includes mRNA expression or miRNA expression, *log*~2~\ transformation is required before integration.
+* mRNA expression, microRNA expression, DNA methylation input data should be pre-processed and z-score normalized.
+
+```{r, eval=TRUE}
+options(knitr.duplicate.label = "allow")
+library(MSOCclassifier)
+library(dplyr)
+# Load example multi-omics expression profile
+data("rna_log_tpm_ICGC")
+data("mir_ICGC")
+data("methy_M_ICGC")
+data("cnv_ICGC")
+data("mut_ICGC")
+# Load projection matrices derived from 226 TCGA-OV samples
+data("TCGA_projection_mx")
+# Load pre-processed TCGA-OV multi-omics data for feature selection in validation cohort
+data("TCGAmRNAscaled")
+data("TCGAmiRNAscaled")
+data("TCGAmetscaled")
+data("TCGAcnvscaled")
+data("TCGAmutscaled")
+# ensure that the number and order of features in the test data are identical to those in the training data (TCGA)
+geneexp_bf_mapping = rna_log_tpm_ICGC[colnames(TCGAmRNAscaled), ]
+geneexp_bf_mapping = t(scale(t(geneexp_bf_mapping)))
+mirexp_bf_mapping = mir_ICGC[colnames(TCGAmiRNAscaled), ]
+mirexp_bf_mapping = t(scale(t(mirexp_bf_mapping)))
+methy_bf_mapping = methy_M_ICGC[colnames(TCGAmetscaled), ]
+methy_bf_mapping = t(scale(t(methy_bf_mapping)))
+cnv_bf_mapping = cnv_ICGC[colnames(TCGAcnvscaled), ]
+cnv_bf_mapping = t(scale(t(cnv_bf_mapping)))
+mut_bf_mapping = mut_ICGC[colnames(TCGAmutscaled), ]
+mut_bf_mapping = t(scale(t(mut_bf_mapping)))
+mut_bf_mapping[is.na(mut_bf_mapping)]=0
+# Projecting each omics data into an unified space
+mRNAexprCCA = t(geneexp_bf_mapping) %*% TCGA_projection_mx$ws[[1]]
+mRNAexprCCA_2 = scale(mRNAexprCCA)
+miRNAexprCCA = t(mirexp_bf_mapping) %*% TCGA_projection_mx$ws[[2]]
+miRNAexprCCA_2 = scale(miRNAexprCCA)
+methyexprCCA = t(methy_bf_mapping) %*% TCGA_projection_mx$ws[[3]]
+methyexprCCA_2 = scale(methyexprCCA)
+cnvexprCCA = t(cnv_bf_mapping) %*% TCGA_projection_mx$ws[[4]]
+cnvexprCCA_2 = scale(cnvexprCCA)
+mutexprCCA = t(mut_bf_mapping) %*% TCGA_projection_mx$ws[[5]]
+mutexprCCA_2 = scale(mutexprCCA) # samples in rows and genes in columns 
+# Multi-omics data fusion
+a1 = a2 = a3 = a4 = a5 = 0.2
+data_input = a1*mRNAexprCCA_2 + a2*miRNAexprCCA_2 + a3*methyexprCCA_2 + a4*cnvexprCCA_2 + a5*mutexprCCA_2
+colnames(data_input) = paste("X",1:ncol(data_input),sep = "")
+ 
+```
+
+## Multi-omics high-grade serous ovarian cancer subtype classification
+The `classifyMSOC` function requires an expression matrix with samples in rows and multi-omics features in columns. The column names of the expression profile should be X1, X2, ..., X100. The code chunk below demonstrates how to perform classification using primary high-grade serous ovarian cancer example data. 
+
+```{r, eval=TRUE, message=TRUE}
+
+# MSOC prediction of primary high-grade serous ovarian cancer
+result <- classifyMSOC(data_input)
+label <- result$label
+prob <- result$prob %>%
+  `colnames<-`(paste("MSOC", 1:5, "_prob", sep = ""))
+res <- data.frame(prob, subtype = paste("MSOC", label, sep = "") ) %>%
+  `rownames<-`(names(label))
+head(res)
+```
+
+
+# Session Info
+```{r, echo=FALSE}
+  sessionInfo()
+```
+
+# References
