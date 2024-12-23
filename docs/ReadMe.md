@@ -1,6 +1,6 @@
 # **MSOCclassifier**: an R package for multi-omics subtyping of high-grade serous ovarian cancer
 
-The `MSOCclassifier` package provides multi-omics subtyping for high-grade serous ovarian cancer. It accepts any combination of mRNA expression, microRNA expression, DNA methylation, copy number variation, and mutation data as input. The training data of the classifier is integrated from the three omics data based on [sparse mCCA](https://www.degruyter.com/document/doi/10.2202/1544-6115.1470/html). See [accompagnying vignette](https://github.com/Carpentierbio/MSOCclassifier/blob/main/docs/MSOCclassifier.html) for further details.
+The `MSOCclassifier` package provides multi-omics subtyping for high-grade serous ovarian cancer. It accepts any combination of mRNA expression, microRNA expression, DNA methylation, copy number variation, and mutation data as input. The training data of the classifier is integrated from the three omics data based on [sparse mCCA](https://www.degruyter.com/document/doi/10.2202/1544-6115.1470/html). See [accompagnying vignette](https://Carpentierbio.github.io/MSOCclassifier/MSOCclassifier.html) for further details.
 
 
 ## Set up
